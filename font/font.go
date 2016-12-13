@@ -181,6 +181,20 @@ func (d *Drawer) MeasureString(s string) (advance fixed.Int26_6) {
 	return MeasureString(d.Face, s)
 }
 
+// BoundBytes returns the bounding box of s, drawn at a dot equal to the origin,
+// as well as the advance.
+//
+// It is equivalent to BoundBytes(string(s)) but may be more efficient.
+func (d *Drawer) BoundBytes(s []byte) (fixed.Rectangle26_6, fixed.Int26_6) {
+	return BoundBytes(d.Face, s)
+}
+
+// BoundString returns the bounding box of s, drawn at a dot equal to the
+// origin, as well as the advance.
+func (d *Drawer) BoundString(s string) (fixed.Rectangle26_6, fixed.Int26_6) {
+	return BoundString(d.Face, s)
+}
+
 // MeasureBytes returns how far dot would advance by drawing s with f.
 //
 // It is equivalent to MeasureString(string(s)) but may be more efficient.
@@ -223,6 +237,76 @@ func MeasureString(f Face, s string) (advance fixed.Int26_6) {
 		prevC = c
 	}
 	return advance
+}
+
+// BoundBytes returns the bounding box of s with f, drawn at a dot equal to the
+// origin, as well as the advance.
+//
+// It is equivalent to BoundString(string(s)) but may be more efficient.
+func BoundBytes(f Face, s []byte) (fixed.Rectangle26_6, fixed.Int26_6) {
+	var b fixed.Rectangle26_6
+	var advance fixed.Int26_6
+	prevC := rune(-1)
+	for len(s) > 0 {
+		c, size := utf8.DecodeRune(s)
+		s = s[size:]
+		if prevC >= 0 {
+			advance += f.Kern(prevC, c)
+		}
+		b2, a, ok := f.GlyphBounds(c)
+		if !ok {
+			// TODO: is falling back on the U+FFFD glyph the responsibility of
+			// the Drawer or the Face?
+			// TODO: set prevC = '\ufffd'?
+			continue
+		}
+		b = grow(b, b2, advance)
+		advance += a
+		prevC = c
+	}
+	return b, advance
+}
+
+// BoundString returns the bounding box of s with f, drawn at a dot equal to the
+// origin, as well as the advance.
+func BoundString(f Face, s string) (fixed.Rectangle26_6, fixed.Int26_6) {
+	var b fixed.Rectangle26_6
+	var advance fixed.Int26_6
+	prevC := rune(-1)
+	for _, c := range s {
+		if prevC >= 0 {
+			advance += f.Kern(prevC, c)
+		}
+		b2, a, ok := f.GlyphBounds(c)
+		if !ok {
+			// TODO: is falling back on the U+FFFD glyph the responsibility of
+			// the Drawer or the Face?
+			// TODO: set prevC = '\ufffd'?
+			continue
+		}
+		b = grow(b, b2, advance)
+		advance += a
+		prevC = c
+	}
+	return b, advance
+}
+
+func grow(b, b2 fixed.Rectangle26_6, shift fixed.Int26_6) fixed.Rectangle26_6 {
+	x := b2.Min.X + shift
+	if b.Min.X > x {
+		b.Min.X = x
+	}
+	if b.Min.Y > b2.Min.Y {
+		b.Min.Y = b2.Min.Y
+	}
+	x = b2.Max.X + shift
+	if b.Max.X < x {
+		b.Max.X = x
+	}
+	if b.Max.Y < b2.Max.Y {
+		b.Max.Y = b2.Max.Y
+	}
+	return b
 }
 
 // Hinting selects how to quantize a vector font's glyph nodes.
