@@ -181,18 +181,24 @@ func (d *Drawer) MeasureString(s string) (advance fixed.Int26_6) {
 	return MeasureString(d.Face, s)
 }
 
-// BoundBytes returns the bounding box of s, drawn at a dot equal to the origin,
-// as well as the advance.
+// BoundBytes returns the bounding box of s, drawn at the drawer dot, as well as
+// the advance.
 //
 // It is equivalent to BoundBytes(string(s)) but may be more efficient.
 func (d *Drawer) BoundBytes(s []byte) (fixed.Rectangle26_6, fixed.Int26_6) {
-	return BoundBytes(d.Face, s)
+	b, a := BoundBytes(d.Face, s)
+	b.Min.Add(d.Dot)
+	b.Max.Add(d.Dot)
+	return b, a
 }
 
-// BoundString returns the bounding box of s, drawn at a dot equal to the
-// origin, as well as the advance.
+// BoundBytes returns the bounding box of s, drawn at the drawer dot, as well as
+// the advance.
 func (d *Drawer) BoundString(s string) (fixed.Rectangle26_6, fixed.Int26_6) {
-	return BoundString(d.Face, s)
+	b, a := BoundString(d.Face, s)
+	b.Min.Add(d.Dot)
+	b.Max.Add(d.Dot)
+	return b, a
 }
 
 // MeasureBytes returns how far dot would advance by drawing s with f.
